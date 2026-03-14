@@ -19,6 +19,8 @@ public class ATCApplication extends Application {
     private AlertPanel        alertPanel;
     private CommandPanel      commandPanel;
     private FlightStripPanel  stripPanel;
+    private MetricsPanel      metricsPanel;
+    private ControlPanel      controlPanel;
 
     @Override
     public void start(Stage primaryStage) {
@@ -31,6 +33,8 @@ public class ATCApplication extends Application {
         alertPanel       = new AlertPanel(conflictDetector);
         commandPanel     = new CommandPanel();
         stripPanel       = new FlightStripPanel(engine);
+        metricsPanel     = new MetricsPanel(engine, conflictDetector);
+        controlPanel     = new ControlPanel(engine);
 
         conflictDetector.setListener(conflicts -> alertPanel.update(conflicts));
 
@@ -76,25 +80,25 @@ public class ATCApplication extends Application {
     private VBox buildSidebar() {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(WINDOW_WIDTH - RadarCanvas.RADAR_SIZE);
-        sidebar.setStyle("-fx-background-color: #050d05; "
-                       + "-fx-border-color: #1a5c1a; "
-                       + "-fx-border-width: 0 0 0 1;");
+        sidebar.setStyle("-fx-background-color: #050d05; " +
+                         "-fx-border-color: #1a5c1a; " +
+                         "-fx-border-width: 0 0 0 1;");
 
-        // Title bar
         Label title = new Label("  ATC RADAR  //  KXYZ");
-        title.setStyle("-fx-text-fill: #39ff14; -fx-font-family: 'Courier New'; "
-                     + "-fx-font-size: 12; -fx-font-weight: bold; "
-                     + "-fx-padding: 8 0 8 0; "
-                     + "-fx-border-color: #1a5c1a; "
-                     + "-fx-border-width: 0 0 1 0;");
+        title.setStyle("-fx-text-fill: #39ff14; -fx-font-family: 'Courier New'; " +
+                       "-fx-font-size: 12; -fx-font-weight: bold; " +
+                       "-fx-padding: 8 0 8 0; " +
+                       "-fx-border-color: #1a5c1a; " +
+                       "-fx-border-width: 0 0 1 0;");
 
-        // Strip panel grows to fill available space
         VBox.setVgrow(stripPanel, Priority.ALWAYS);
 
         sidebar.getChildren().addAll(
             title,
             stripPanel,
+            controlPanel,
             commandPanel,
+            metricsPanel,
             alertPanel
         );
         return sidebar;
@@ -104,6 +108,8 @@ public class ATCApplication extends Application {
     public void stop() {
         if (conflictDetector != null) conflictDetector.shutdown();
         if (stripPanel != null)       stripPanel.shutdown();
+        if (controlPanel != null)     controlPanel.shutdown();
+        if (metricsPanel != null)     metricsPanel.stop();
         if (engine != null)           engine.shutdown();
         if (radarCanvas != null)      radarCanvas.stopRendering();
     }
