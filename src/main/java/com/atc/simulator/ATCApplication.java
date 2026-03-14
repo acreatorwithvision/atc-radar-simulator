@@ -3,13 +3,9 @@ package com.atc.simulator;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-
-import java.util.List;
 
 public class ATCApplication extends Application {
 
@@ -17,10 +13,11 @@ public class ATCApplication extends Application {
     public static final int    WINDOW_WIDTH  = 1200;
     public static final int    WINDOW_HEIGHT = 800;
 
-    private RadarCanvas        radarCanvas;
-    private SimulationEngine   engine;
-    private ConflictDetector   conflictDetector;
-    private AlertPanel         alertPanel;
+    private RadarCanvas       radarCanvas;
+    private SimulationEngine  engine;
+    private ConflictDetector  conflictDetector;
+    private AlertPanel        alertPanel;
+    private CommandPanel      commandPanel;
 
     @Override
     public void start(Stage primaryStage) {
@@ -31,12 +28,32 @@ public class ATCApplication extends Application {
         // ── Conflict detector ──────────────────────────────────────────────
         conflictDetector = new ConflictDetector(engine);
         alertPanel       = new AlertPanel(conflictDetector);
-
         conflictDetector.setListener(conflicts -> alertPanel.update(conflicts));
 
-        // ── Radar ──────────────────────────────────────────────────────────
+        // ── Command panel ──────────────────────────────────────────────────
+        commandPanel = new CommandPanel();
+
+        // ── Radar canvas ───────────────────────────────────────────────────
         radarCanvas = new RadarCanvas();
         radarCanvas.setAircraftCollection(engine.getAllAircraft());
+        radarCanvas.setClickListener(new RadarCanvas.AircraftClickListener() {
+            @Override
+            public void onAircraftClicked(Aircraft ac) {
+                // Deselect previous
+                Aircraft prev = commandPanel.getSelectedAircraft();
+                if (prev != null && !prev.callsign.equals(ac.callsign)) {
+                    prev.setSelected(false);
+                }
+                commandPanel.selectAircraft(ac);
+            }
+
+            @Override
+            public void onEmptyClicked() {
+                commandPanel.deselect();
+            }
+        });
+
+        commandPanel.setOnDeselect(() -> {});
 
         // ── Sidebar ────────────────────────────────────────────────────────
         VBox sidebar = buildSidebar();
@@ -53,7 +70,7 @@ public class ATCApplication extends Application {
         primaryStage.setResizable(false);
         primaryStage.show();
 
-        // ── Start everything ───────────────────────────────────────────────
+        // ── Start ──────────────────────────────────────────────────────────
         engine.start();
         conflictDetector.start();
 
@@ -67,22 +84,28 @@ public class ATCApplication extends Application {
                        + "-fx-border-color: #1a5c1a; "
                        + "-fx-border-width: 0 0 0 1;");
 
-        // Header
+        // Title bar
         Label title = new Label("  ATC RADAR  //  KXYZ");
         title.setStyle("-fx-text-fill: #39ff14; -fx-font-family: 'Courier New'; "
                      + "-fx-font-size: 12; -fx-font-weight: bold; "
-                     + "-fx-padding: 10 0 6 0; "
+                     + "-fx-padding: 8 0 8 0; "
                      + "-fx-border-color: #1a5c1a; -fx-border-width: 0 0 1 0;");
 
-        Label hint = new Label("  FLIGHT STRIPS\n  (Commit 7)");
+        Label hint = new Label("  Click a blip to select");
         hint.setStyle("-fx-text-fill: #1a5c1a; -fx-font-family: 'Courier New'; "
-                    + "-fx-font-size: 10; -fx-padding: 8 0 0 0;");
+                    + "-fx-font-size: 10; -fx-padding: 6 0 0 0;");
 
-        // Push alert panel to bottom
+        // Spacer pushes command + alert to bottom
         VBox spacer = new VBox();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        sidebar.getChildren().addAll(title, hint, spacer, alertPanel);
+        sidebar.getChildren().addAll(
+            title,
+            hint,
+            spacer,
+            commandPanel,
+            alertPanel
+        );
         return sidebar;
     }
 

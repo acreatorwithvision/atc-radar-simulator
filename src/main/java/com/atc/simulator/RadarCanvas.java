@@ -11,7 +11,18 @@ import javafx.scene.text.TextAlignment;
 import java.util.Collection;
 import java.util.Collections;
 
+
 public class RadarCanvas extends Canvas {
+
+    // Click-to-select callback
+    private AircraftClickListener clickListener;
+
+    public interface AircraftClickListener {
+        void onAircraftClicked(Aircraft ac);
+        void onEmptyClicked();
+    }
+
+
 
     public static final double RADAR_SIZE  = 760.0;
     public static final double CENTER_X    = RADAR_SIZE / 2.0;
@@ -225,6 +236,34 @@ public class RadarCanvas extends Canvas {
 
     // ── Overlay text ──────────────────────────────────────────────────────────
 
+    public void setClickListener(AircraftClickListener listener) {
+        this.clickListener = listener;
+        setOnMouseClicked(event -> handleClick(event.getX(), event.getY()));
+    }
+
+    private void handleClick(double mx, double my) {
+        if (aircraftCollection == null) return;
+
+        // Find the closest aircraft within click tolerance
+        Aircraft closest    = null;
+        double   closestDist = 16.0; // px hit radius
+
+        for (Aircraft ac : aircraftCollection) {
+            Aircraft.AircraftState s = ac.getState();
+            double dx   = s.x() - mx;
+            double dy   = s.y() - my;
+            double dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closest     = ac;
+            }
+        }
+
+        if (clickListener == null) return;
+
+        if (closest != null) clickListener.onAircraftClicked(closest);
+        else                 clickListener.onEmptyClicked();
+    }
     private void drawOverlayText(GraphicsContext gc) {
         gc.setFont(Font.font("Courier New", 11));
         gc.setTextAlign(TextAlignment.LEFT);
