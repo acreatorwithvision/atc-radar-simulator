@@ -18,6 +18,7 @@ public class ATCApplication extends Application {
     private ConflictDetector  conflictDetector;
     private AlertPanel        alertPanel;
     private CommandPanel      commandPanel;
+    private FlightStripPanel  stripPanel;
 
     @Override
     public void start(Stage primaryStage) {
@@ -25,40 +26,35 @@ public class ATCApplication extends Application {
         engine = new SimulationEngine();
         engine.init(AircraftFactory.createInitialTraffic(10));
 
-        // ── Conflict detector ──────────────────────────────────────────────
+        // ── Panels ─────────────────────────────────────────────────────────
         conflictDetector = new ConflictDetector(engine);
         alertPanel       = new AlertPanel(conflictDetector);
+        commandPanel     = new CommandPanel();
+        stripPanel       = new FlightStripPanel(engine);
+
         conflictDetector.setListener(conflicts -> alertPanel.update(conflicts));
 
-        // ── Command panel ──────────────────────────────────────────────────
-        commandPanel = new CommandPanel();
-
-        // ── Radar canvas ───────────────────────────────────────────────────
+        // ── Radar ──────────────────────────────────────────────────────────
         radarCanvas = new RadarCanvas();
         radarCanvas.setAircraftCollection(engine.getAllAircraft());
         radarCanvas.setClickListener(new RadarCanvas.AircraftClickListener() {
             @Override
             public void onAircraftClicked(Aircraft ac) {
-                // Deselect previous
                 Aircraft prev = commandPanel.getSelectedAircraft();
-                if (prev != null && !prev.callsign.equals(ac.callsign)) {
+                if (prev != null && !prev.callsign.equals(ac.callsign))
                     prev.setSelected(false);
-                }
                 commandPanel.selectAircraft(ac);
             }
-
             @Override
             public void onEmptyClicked() {
                 commandPanel.deselect();
             }
         });
 
-        commandPanel.setOnDeselect(() -> {});
-
         // ── Sidebar ────────────────────────────────────────────────────────
         VBox sidebar = buildSidebar();
 
-        // ── Layout ─────────────────────────────────────────────────────────
+        // ── Root ───────────────────────────────────────────────────────────
         HBox root = new HBox();
         root.setStyle("-fx-background-color: #000000;");
         HBox.setHgrow(sidebar, Priority.ALWAYS);
@@ -89,20 +85,15 @@ public class ATCApplication extends Application {
         title.setStyle("-fx-text-fill: #39ff14; -fx-font-family: 'Courier New'; "
                      + "-fx-font-size: 12; -fx-font-weight: bold; "
                      + "-fx-padding: 8 0 8 0; "
-                     + "-fx-border-color: #1a5c1a; -fx-border-width: 0 0 1 0;");
+                     + "-fx-border-color: #1a5c1a; "
+                     + "-fx-border-width: 0 0 1 0;");
 
-        Label hint = new Label("  Click a blip to select");
-        hint.setStyle("-fx-text-fill: #1a5c1a; -fx-font-family: 'Courier New'; "
-                    + "-fx-font-size: 10; -fx-padding: 6 0 0 0;");
-
-        // Spacer pushes command + alert to bottom
-        VBox spacer = new VBox();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
+        // Strip panel grows to fill available space
+        VBox.setVgrow(stripPanel, Priority.ALWAYS);
 
         sidebar.getChildren().addAll(
             title,
-            hint,
-            spacer,
+            stripPanel,
             commandPanel,
             alertPanel
         );
@@ -112,6 +103,7 @@ public class ATCApplication extends Application {
     @Override
     public void stop() {
         if (conflictDetector != null) conflictDetector.shutdown();
+        if (stripPanel != null)       stripPanel.shutdown();
         if (engine != null)           engine.shutdown();
         if (radarCanvas != null)      radarCanvas.stopRendering();
     }
